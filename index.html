@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Food Tracker</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header>
+        <h1 id="title">Daily Food Tracker</h1>
+        <button id="langToggle" class="lang-btn">中文</button>
+    </header>
+
+    <section class="card input-card">
+        <label id="foodLabel">Food Name</label>
+        <input id="foodInput" type="text" placeholder="e.g., Chicken Breast">
+
+        <label id="qtyLabel">Quantity (grams)</label>
+        <input id="qtyInput" type="number" placeholder="150">
+
+        <button id="addBtn" class="add-btn">Add</button>
+    </section>
+
+    <section class="card">
+        <h2 id="logTitle">Today's Food Log</h2>
+        <div id="foodList"></div>
+    </section>
+
+    <section class="card summary-card">
+        <h2 id="summaryTitle">Daily Summary</h2>
+        <p id="caloriesTotal">Calories: 0</p>
+        <p id="proteinTotal">Protein: 0g</p>
+        <p id="carbTotal">Carbs: 0g</p>
+        <p id="fatTotal">Fat: 0g</p>
+    </section>
+
+    <script src="script.js"></script>
+</body>
+</html>
