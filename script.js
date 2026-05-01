@@ -22,7 +22,7 @@ window.addEventListener("load", () => {
 
 // Step 1: Search foods
 async function searchUSDA(query) {
-    const apiKey = "YOUR_REAL_API_KEY";
+    const apiKey = "PTROzXyympDbLSI2EYhgYb9m7dLexPk9YbgDNdor";
     const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=10&api_key=${apiKey}`;
 
     const response = await fetch(url);
@@ -39,7 +39,7 @@ async function searchUSDA(query) {
 
 // Step 2: Fetch nutrients using nutrient IDs
 async function fetchUSDAFood(fdcId) {
-    const apiKey = "YOUR_REAL_API_KEY";
+    const apiKey = "PTROzXyympDbLSI2EYhgYb9m7dLexPk9YbgDNdor";
 
     // Request only the nutrients we need
     const url = `https://api.nal.usda.gov/fdc/v1/food/${fdcId}?nutrients=203,204,205,208&api_key=${apiKey}`;
@@ -76,6 +76,8 @@ async function fetchUSDAFood(fdcId) {
         fatPer100: fat
     };
 }
+
+
 
 // ===============================
 // Autocomplete UI
