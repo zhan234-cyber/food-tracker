@@ -17,12 +17,12 @@ window.addEventListener("load", () => {
 });
 
 // ===============================
-// USDA API — FIXED VERSION
+// USDA API — FINAL FIXED VERSION
 // ===============================
 
 // Step 1: Search foods
 async function searchUSDA(query) {
-    const apiKey = "DEMO_KEY";
+    const apiKey = "YOUR_REAL_API_KEY";
     const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=10&api_key=${apiKey}`;
 
     const response = await fetch(url);
@@ -37,10 +37,12 @@ async function searchUSDA(query) {
     }));
 }
 
-// Step 2: Fetch nutrients using fdcId
+// Step 2: Fetch nutrients using nutrient IDs
 async function fetchUSDAFood(fdcId) {
-    const apiKey = "PTROzXyympDbLSI2EYhgYb9m7dLexPk9YbgDNdor";
-    const url = `https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${apiKey}`;
+    const apiKey = "YOUR_REAL_API_KEY";
+
+    // Request only the nutrients we need
+    const url = `https://api.nal.usda.gov/fdc/v1/food/${fdcId}?nutrients=203,204,205,208&api_key=${apiKey}`;
 
     const response = await fetch(url);
     if (!response.ok) throw new Error("USDA nutrient fetch error");
@@ -50,17 +52,17 @@ async function fetchUSDAFood(fdcId) {
     let cal = 0, protein = 0, carbs = 0, fat = 0;
 
     for (const nutrient of data.foodNutrients) {
-        switch (nutrient.nutrientName) {
-            case "Energy":
+        switch (nutrient.nutrientId) {
+            case 208: // Energy (kcal)
                 cal = nutrient.value;
                 break;
-            case "Protein":
+            case 203: // Protein
                 protein = nutrient.value;
                 break;
-            case "Carbohydrate, by difference":
+            case 205: // Carbs
                 carbs = nutrient.value;
                 break;
-            case "Total lipid (fat)":
+            case 204: // Fat
                 fat = nutrient.value;
                 break;
         }
@@ -76,7 +78,7 @@ async function fetchUSDAFood(fdcId) {
 }
 
 // ===============================
-// Autocomplete UI — FIXED
+// Autocomplete UI
 // ===============================
 
 const foodInput = document.getElementById("foodInput");
@@ -106,7 +108,7 @@ function showSuggestions(list) {
         div.textContent = item.name;
         div.onclick = () => {
             foodInput.value = item.name;
-            foodInput.dataset.fdcId = item.fdcId; // store fdcId
+            foodInput.dataset.fdcId = item.fdcId;
             hideSuggestions();
         };
         suggestionsBox.appendChild(div);
@@ -121,7 +123,7 @@ function hideSuggestions() {
 }
 
 // ===============================
-// Add food — FIXED
+// Add food
 // ===============================
 
 async function addFood() {
