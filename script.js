@@ -58,32 +58,39 @@ document.getElementById("langToggle").addEventListener("click", () => {
     updateLanguage();
 });
 
-function addFood() {
-    const name = document.getElementById("foodInput").value.toLowerCase();
+async function addFood() {
+    const name = document.getElementById("foodInput").value;
     const qty = parseFloat(document.getElementById("qtyInput").value);
 
-    if (!nutritionDB[name]) {
-        alert("Food not found in database.");
+    if (!name || !qty) {
+        alert("Please enter food name and quantity.");
         return;
     }
 
-    const factor = qty / 100;
-    const data = nutritionDB[name];
+    try {
+        const nutrition = await fetchUSDA(name);
 
-    const entry = {
-        name,
-        cal: data.cal * factor,
-        protein: data.protein * factor,
-        carbs: data.carbs * factor,
-        fat: data.fat * factor
-    };
+        const factor = qty / 100;
 
-    foodLog.push(entry);
-    localStorage.setItem("foodLog", JSON.stringify(foodLog));
+        const entry = {
+            name: nutrition.name,
+            cal: nutrition.cal * factor,
+            protein: nutrition.protein * factor,
+            carbs: nutrition.carbs * factor,
+            fat: nutrition.fat * factor
+        };
 
-    renderList();
-    updateTotals();
+        foodLog.push(entry);
+        localStorage.setItem("foodLog", JSON.stringify(foodLog));
+
+        renderList();
+        updateTotals();
+
+    } catch (err) {
+        alert("Food not found in USDA database.");
+    }
 }
+
 
 document.getElementById("addBtn").addEventListener("click", addFood);
 
@@ -116,6 +123,50 @@ function updateTotals() {
     document.getElementById("carbTotal").textContent = `${t.carbs}: ${carbs.toFixed(1)}g`;
     document.getElementById("fatTotal").textContent = `${t.fat}: ${fat.toFixed(1)}g`;
 }
+
+async function fetchUSDA(foodName) {
+    const apiKey = "DEMO_KEY"; // USDA provides this for free
+
+    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(foodName)}&pageSize=1&api_key=${apiKey}`;
+
+    const response = await fetch(url);
+    const data = await response.json();
+
+    if (!data.foods || data.foods.length === 0) {
+        throw new Error("Food not found");
+    }
+
+    const food = data.foods[0];
+
+    // Extract nutrients
+    let cal = 0, protein = 0, carbs = 0, fat = 0;
+
+    for (const nutrient of food.foodNutrients) {
+        switch (nutrient.nutrientName) {
+            case "Energy":
+                cal = nutrient.value;
+                break;
+            case "Protein":
+                protein = nutrient.value;
+                break;
+            case "Carbohydrate, by difference":
+                carbs = nutrient.value;
+                break;
+            case "Total lipid (fat)":
+                fat = nutrient.value;
+                break;
+        }
+    }
+
+    return {
+        name: food.description,
+        cal,
+        protein,
+        carbs,
+        fat
+    };
+}
+
 
 renderList();
 updateTotals();
