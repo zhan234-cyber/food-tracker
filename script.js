@@ -5,11 +5,11 @@
 
 // -------- Global state --------
 let foodLog = [];
-let foodDB = [];          // full database
+let foodDB = [];          // full USDA database
 let searchIndex = [];     // for autocomplete
 
-// Restore saved log
-window.addEventListener("load", async () => {
+// Restore saved log + load DB
+window.addEventListener("DOMContentLoaded", async () => {
     await loadLocalDatabase();
 
     const saved = localStorage.getItem("foodLog");
@@ -34,16 +34,16 @@ async function loadLocalDatabase() {
         // { "FoundationFoods": [ ... ] }
         foodDB = data.FoundationFoods;
 
-        // Build search index (description + fdcId)
+        // Build autocomplete index
         searchIndex = foodDB.map(food => ({
             name: food.description,
             fdcId: food.fdcId
         }));
 
-        console.log("Local USDA database loaded:", foodDB.length, "foods");
+        console.log("Loaded local USDA DB:", foodDB.length, "foods");
 
     } catch (err) {
-        console.error("Failed to load local USDA database:", err);
+        console.error("Failed to load Foundation_Foods.json:", err);
         alert("Error loading Foundation_Foods.json. Make sure it is in the same folder as index.html");
     }
 }
@@ -63,10 +63,9 @@ foodInput.addEventListener("input", (e) => {
         return;
     }
 
-    // Fast local search
     const matches = searchIndex
         .filter(item => item.name.toLowerCase().includes(query))
-        .slice(0, 12); // limit results
+        .slice(0, 12);
 
     showSuggestions(matches);
 });
