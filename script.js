@@ -1,11 +1,6 @@
 // ===============================
 // Simple Food Tracker - script.js
 // Powered by USDA FoodData Central
-// Features:
-// - USDA search + nutrients
-// - Autocomplete dropdown
-// - Add / Edit / Delete entries
-// - LocalStorage persistence
 // ===============================
 
 // -------- Global state --------
@@ -22,56 +17,10 @@ window.addEventListener("load", () => {
 });
 
 // ===============================
-// USDA API helpers
+// USDA API — FIXED VERSION
 // ===============================
 
-async function fetchUSDA(foodName) {
-    const apiKey = "DEMO_KEY"; // USDA demo key
-    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(foodName)}&pageSize=1&api_key=${apiKey}`;
-
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error("USDA API error");
-    }
-
-    const data = await response.json();
-    if (!data.foods || data.foods.length === 0) {
-        throw new Error("Food not found");
-    }
-
-    const food = data.foods[0];
-
-    let cal = 0, protein = 0, carbs = 0, fat = 0;
-
-    if (Array.isArray(food.foodNutrients)) {
-        for (const nutrient of food.foodNutrients) {
-            switch (nutrient.nutrientName) {
-                case "Energy":
-                    cal = nutrient.value;
-                    break;
-                case "Protein":
-                    protein = nutrient.value;
-                    break;
-                case "Carbohydrate, by difference":
-                    carbs = nutrient.value;
-                    break;
-                case "Total lipid (fat)":
-                    fat = nutrient.value;
-                    break;
-            }
-        }
-    }
-
-    return {
-        name: food.description,
-        calPer100: cal,
-        proteinPer100: protein,
-        carbsPer100: carbs,
-        fatPer100: fat
-    };
-}
-
-// Autocomplete search (USDA)
+// Step 1: Search foods
 async function searchUSDA(query) {
     const apiKey = "DEMO_KEY";
     const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=10&api_key=${apiKey}`;
@@ -82,11 +31,52 @@ async function searchUSDA(query) {
     const data = await response.json();
     if (!data.foods) return [];
 
-    return data.foods.map(f => f.description);
+    return data.foods.map(f => ({
+        name: f.description,
+        fdcId: f.fdcId
+    }));
+}
+
+// Step 2: Fetch nutrients using fdcId
+async function fetchUSDAFood(fdcId) {
+    const apiKey = "PTROzXyympDbLSI2EYhgYb9m7dLexPk9YbgDNdor";
+    const url = `https://api.nal.usda.gov/fdc/v1/food/${fdcId}?api_key=${apiKey}`;
+
+    const response = await fetch(url);
+    if (!response.ok) throw new Error("USDA nutrient fetch error");
+
+    const data = await response.json();
+
+    let cal = 0, protein = 0, carbs = 0, fat = 0;
+
+    for (const nutrient of data.foodNutrients) {
+        switch (nutrient.nutrientName) {
+            case "Energy":
+                cal = nutrient.value;
+                break;
+            case "Protein":
+                protein = nutrient.value;
+                break;
+            case "Carbohydrate, by difference":
+                carbs = nutrient.value;
+                break;
+            case "Total lipid (fat)":
+                fat = nutrient.value;
+                break;
+        }
+    }
+
+    return {
+        name: data.description,
+        calPer100: cal,
+        proteinPer100: protein,
+        carbsPer100: carbs,
+        fatPer100: fat
+    };
 }
 
 // ===============================
-// Autocomplete UI
+// Autocomplete UI — FIXED
 // ===============================
 
 const foodInput = document.getElementById("foodInput");
@@ -99,12 +89,8 @@ foodInput.addEventListener("input", async (e) => {
         return;
     }
 
-    try {
-        const suggestions = await searchUSDA(query);
-        showSuggestions(suggestions);
-    } catch {
-        hideSuggestions();
-    }
+    const results = await searchUSDA(query);
+    showSuggestions(results);
 });
 
 function showSuggestions(list) {
@@ -117,9 +103,10 @@ function showSuggestions(list) {
     list.forEach(item => {
         const div = document.createElement("div");
         div.className = "suggestion-item";
-        div.textContent = item;
+        div.textContent = item.name;
         div.onclick = () => {
-            foodInput.value = item;
+            foodInput.value = item.name;
+            foodInput.dataset.fdcId = item.fdcId; // store fdcId
             hideSuggestions();
         };
         suggestionsBox.appendChild(div);
@@ -133,31 +120,29 @@ function hideSuggestions() {
     suggestionsBox.innerHTML = "";
 }
 
-// Hide suggestions when clicking outside
-document.addEventListener("click", (e) => {
-    if (!suggestionsBox.contains(e.target) && e.target !== foodInput) {
-        hideSuggestions();
-    }
-});
-
 // ===============================
-// Add food
+// Add food — FIXED
 // ===============================
 
 async function addFood() {
     const name = foodInput.value.trim();
     const qty = parseFloat(document.getElementById("qtyInput").value);
+    const fdcId = foodInput.dataset.fdcId;
 
     if (!name || !qty || qty <= 0) {
-        alert("Please enter a valid food name and quantity (grams).");
+        alert("Please enter a valid food name and quantity.");
         return;
     }
 
-    try {
-        // Optional: show loading state
-        setLoading(true);
+    if (!fdcId) {
+        alert("Please select a food from the dropdown.");
+        return;
+    }
 
-        const nutrition = await fetchUSDA(name);
+    setLoading(true);
+
+    try {
+        const nutrition = await fetchUSDAFood(fdcId);
 
         const factor = qty / 100;
 
@@ -181,19 +166,18 @@ async function addFood() {
         updateTotals();
 
         foodInput.value = "";
+        foodInput.dataset.fdcId = "";
         document.getElementById("qtyInput").value = "";
 
     } catch (err) {
-        alert("Food not found in USDA database or API error.");
-    } finally {
-        setLoading(false);
+        alert("Error fetching nutrition.");
     }
+
+    setLoading(false);
 }
 
-// Simple loading indicator (optional)
 function setLoading(isLoading) {
     const btn = document.getElementById("addButton");
-    if (!btn) return;
     btn.disabled = isLoading;
     btn.textContent = isLoading ? "Adding..." : "Add Food";
 }
@@ -273,7 +257,6 @@ function updateTotals() {
     }
 
     const totalsEl = document.getElementById("totals");
-    if (!totalsEl) return;
 
     totalsEl.innerHTML = `
         <strong>Daily Total:</strong><br>
