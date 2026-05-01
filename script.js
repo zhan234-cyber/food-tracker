@@ -1,100 +1,74 @@
 // ===============================
-// Simple Food Tracker - script.js
-// Powered by USDA FoodData Central
+// Local USDA Food Tracker - script.js
+// Uses local Foundation_Foods.json
 // ===============================
 
 // -------- Global state --------
 let foodLog = [];
+let foodDB = [];          // full database
+let searchIndex = [];     // for autocomplete
 
-// Restore from localStorage on load
-window.addEventListener("load", () => {
+// Restore saved log
+window.addEventListener("load", async () => {
+    await loadLocalDatabase();
+
     const saved = localStorage.getItem("foodLog");
     if (saved) {
         foodLog = JSON.parse(saved);
     }
+
     renderList();
     updateTotals();
 });
 
 // ===============================
-// USDA API — FINAL FIXED VERSION
+// Load local USDA Foundation Foods
 // ===============================
 
-// Step 1: Search foods
-async function searchUSDA(query) {
-    const apiKey = "PTROzXyympDbLSI2EYhgYb9m7dLexPk9YbgDNdor";
-    const url = `https://api.nal.usda.gov/fdc/v1/foods/search?query=${encodeURIComponent(query)}&pageSize=10&api_key=${apiKey}`;
+async function loadLocalDatabase() {
+    try {
+        const response = await fetch("Foundation_Foods.json");
+        const data = await response.json();
 
-    const response = await fetch(url);
-    if (!response.ok) return [];
+        // Your file structure:
+        // { "FoundationFoods": [ ... ] }
+        foodDB = data.FoundationFoods;
 
-    const data = await response.json();
-    if (!data.foods) return [];
+        // Build search index (description + fdcId)
+        searchIndex = foodDB.map(food => ({
+            name: food.description,
+            fdcId: food.fdcId
+        }));
 
-    return data.foods.map(f => ({
-        name: f.description,
-        fdcId: f.fdcId
-    }));
-}
+        console.log("Local USDA database loaded:", foodDB.length, "foods");
 
-// Step 2: Fetch nutrients using nutrient IDs
-async function fetchUSDAFood(fdcId) {
-    const apiKey = "PTROzXyympDbLSI2EYhgYb9m7dLexPk9YbgDNdor";
-
-    // Request only the nutrients we need
-    const url = `https://api.nal.usda.gov/fdc/v1/food/${fdcId}?nutrients=203,204,205,208&api_key=${apiKey}`;
-
-    const response = await fetch(url);
-    if (!response.ok) throw new Error("USDA nutrient fetch error");
-
-    const data = await response.json();
-
-    let cal = 0, protein = 0, carbs = 0, fat = 0;
-
-    for (const nutrient of data.foodNutrients) {
-        switch (nutrient.nutrientId) {
-            case 208: // Energy (kcal)
-                cal = nutrient.value;
-                break;
-            case 203: // Protein
-                protein = nutrient.value;
-                break;
-            case 205: // Carbs
-                carbs = nutrient.value;
-                break;
-            case 204: // Fat
-                fat = nutrient.value;
-                break;
-        }
+    } catch (err) {
+        console.error("Failed to load local USDA database:", err);
+        alert("Error loading Foundation_Foods.json. Make sure it is in the same folder as index.html");
     }
-
-    return {
-        name: data.description,
-        calPer100: cal,
-        proteinPer100: protein,
-        carbsPer100: carbs,
-        fatPer100: fat
-    };
 }
 
-
-
 // ===============================
-// Autocomplete UI
+// Autocomplete search (local)
 // ===============================
 
 const foodInput = document.getElementById("foodInput");
 const suggestionsBox = document.getElementById("suggestions");
 
-foodInput.addEventListener("input", async (e) => {
-    const query = e.target.value.trim();
+foodInput.addEventListener("input", (e) => {
+    const query = e.target.value.trim().toLowerCase();
+
     if (query.length < 2) {
         hideSuggestions();
         return;
     }
 
-    const results = await searchUSDA(query);
-    showSuggestions(results);
+    // Fast local search
+    const matches = searchIndex
+        .filter(item => item.name.toLowerCase().includes(query))
+        .slice(0, 12); // limit results
+
+    showSuggestions(matches);
 });
 
 function showSuggestions(list) {
@@ -124,6 +98,51 @@ function hideSuggestions() {
     suggestionsBox.innerHTML = "";
 }
 
+document.addEventListener("click", (e) => {
+    if (!suggestionsBox.contains(e.target) && e.target !== foodInput) {
+        hideSuggestions();
+    }
+});
+
+// ===============================
+// Extract nutrients from local DB
+// ===============================
+
+function getNutrientsFromLocalDB(fdcId) {
+    const food = foodDB.find(f => f.fdcId == fdcId);
+    if (!food) return null;
+
+    let cal = 0, protein = 0, carbs = 0, fat = 0;
+
+    for (const nutrient of food.foodNutrients) {
+        const id = nutrient.nutrient.id;
+        const amount = nutrient.amount ?? 0;
+
+        switch (id) {
+            case 1008: // Energy (kcal)
+                cal = amount;
+                break;
+            case 1003: // Protein
+                protein = amount;
+                break;
+            case 1005: // Carbs
+                carbs = amount;
+                break;
+            case 1004: // Fat
+                fat = amount;
+                break;
+        }
+    }
+
+    return {
+        name: food.description,
+        calPer100: cal,
+        proteinPer100: protein,
+        carbsPer100: carbs,
+        fatPer100: fat
+    };
+}
+
 // ===============================
 // Add food
 // ===============================
@@ -143,47 +162,36 @@ async function addFood() {
         return;
     }
 
-    setLoading(true);
-
-    try {
-        const nutrition = await fetchUSDAFood(fdcId);
-
-        const factor = qty / 100;
-
-        const entry = {
-            name: nutrition.name,
-            qty,
-            calPer100: nutrition.calPer100,
-            proteinPer100: nutrition.proteinPer100,
-            carbsPer100: nutrition.carbsPer100,
-            fatPer100: nutrition.fatPer100,
-            cal: nutrition.calPer100 * factor,
-            protein: nutrition.proteinPer100 * factor,
-            carbs: nutrition.carbsPer100 * factor,
-            fat: nutrition.fatPer100 * factor
-        };
-
-        foodLog.push(entry);
-        localStorage.setItem("foodLog", JSON.stringify(foodLog));
-
-        renderList();
-        updateTotals();
-
-        foodInput.value = "";
-        foodInput.dataset.fdcId = "";
-        document.getElementById("qtyInput").value = "";
-
-    } catch (err) {
-        alert("Error fetching nutrition.");
+    const nutrition = getNutrientsFromLocalDB(fdcId);
+    if (!nutrition) {
+        alert("Food not found in local database.");
+        return;
     }
 
-    setLoading(false);
-}
+    const factor = qty / 100;
 
-function setLoading(isLoading) {
-    const btn = document.getElementById("addButton");
-    btn.disabled = isLoading;
-    btn.textContent = isLoading ? "Adding..." : "Add Food";
+    const entry = {
+        name: nutrition.name,
+        qty,
+        calPer100: nutrition.calPer100,
+        proteinPer100: nutrition.proteinPer100,
+        carbsPer100: nutrition.carbsPer100,
+        fatPer100: nutrition.fatPer100,
+        cal: nutrition.calPer100 * factor,
+        protein: nutrition.proteinPer100 * factor,
+        carbs: nutrition.carbsPer100 * factor,
+        fat: nutrition.fatPer100 * factor
+    };
+
+    foodLog.push(entry);
+    localStorage.setItem("foodLog", JSON.stringify(foodLog));
+
+    renderList();
+    updateTotals();
+
+    foodInput.value = "";
+    foodInput.dataset.fdcId = "";
+    document.getElementById("qtyInput").value = "";
 }
 
 // ===============================
