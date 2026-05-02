@@ -18,16 +18,20 @@ async function loadLocalDatabase() {
         const response = await fetch("Foundation_Foods.json");
         const data = await response.json();
         
-        // Match the "FoundationFoods" key in your JSON
+        // 1. Match the "FoundationFoods" key
         foodDB = data.FoundationFoods;
 
-        searchIndex = foodDB.map(food => ({
-            name: food.description,
-            fdcId: food.fdcId
-        }));
-        console.log("Database Loaded:", foodDB.length, "items");
+        // 2. Add a filter to ensure 'food' and 'food.description' exist before mapping
+        searchIndex = foodDB
+            .filter(food => food && food.description) 
+            .map(food => ({
+                name: food.description,
+                fdcId: food.fdcId
+            }));
+
+        console.log("Database Loaded successfully:", searchIndex.length, "items");
     } catch (err) {
-        console.error("Failed to load JSON. Ensure you are using a local server:", err);
+        console.error("Failed to load JSON:", err);
     }
 }
 
