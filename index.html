@@ -8,13 +8,14 @@
 </head>
 <body>
 
-    <header>
-        <h1>Food Tracker</h1>
-    </header>
+    <div class="container"> <div class="header-row">
+        <h1 id="mainTitle">Food Tracker</h1>
+        <button id="langSwitch" onclick="toggleLanguage()" class="lang-btn">中文</button>
+    </div>
 
     <div class="card input-card">
         <div class="search-container">
-            <h3>Auto Search</h3>
+            <h3 id="autoSearchTitle">Auto Search</h3>
             <input id="foodInput" type="text" placeholder="Search food (e.g. Chicken)" autocomplete="off">
             <div id="suggestions"></div>
         </div>
@@ -51,6 +52,6 @@
         <div id="totals"></div>
     </div>
 
-    <script src="script.js"></script>
+    <script src="script1.js"></script>
 </body>
 </html>

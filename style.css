@@ -164,3 +164,30 @@ input {
 .manual-add-btn:hover {
     opacity: 0.9;
 }
+
+.lang-btn {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 6px 15px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.lang-btn:hover {
+    background: #f9f9f9;
+    border-color: #bbb;
+}
+
+/* This aligns the title and button on the same line */
+.header-row {
+    display: flex;
+    justify-content: space-between; /* Pushes H1 left, Button right */
+    align-items: center;
+    padding: 20px 10px; /* Adds breathing room around the header */
+    max-width: 600px;   /* Or match your card width */
+    margin: 0 auto;     /* Centers the header row */
+}

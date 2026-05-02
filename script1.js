@@ -1,4 +1,70 @@
 // -------- Global state --------
+const i18n = {
+    en: {
+        title: "Food Tracker",
+        autoSearch: "Auto Search",
+        searchPlaceholder: "Search food (e.g. Chicken)",
+        weightPlaceholder: "Weight in grams (e.g. 100)",
+        addBtn: "Add to Log",
+        manualTitle: "Manual Entry",
+        manualName: "Food Name (e.g. Homemade Pizza)",
+        manualCal: "Total Calories (kcal)",
+        prot: "Prot (g)",
+        carb: "Carb (g)",
+        fat: "Fat (g)",
+        manualAddBtn: "Add Manual Entry",
+        todayTitle: "Today's Foods",
+        clearBtn: "Clear Daily Log",
+        totalsTitle: "Daily Totals",
+        caloriesLabel: "Calories",
+        langBtn: "中文"
+    },
+    zh: {
+        title: "饮食追踪器",
+        autoSearch: "自动搜索",
+        searchPlaceholder: "搜索食物 (如：鸡肉)",
+        weightPlaceholder: "重量（克）",
+        addBtn: "加入记录",
+        manualTitle: "手动输入",
+        manualName: "食物名称 (如：自制比萨)",
+        manualCal: "总热量 (大卡)",
+        prot: "蛋白质 (g)",
+        carb: "碳水 (g)",
+        fat: "脂肪 (g)",
+        manualAddBtn: "增加手动记录",
+        todayTitle: "今日饮食",
+        clearBtn: "清空今日记录",
+        totalsTitle: "今日总量",
+        caloriesLabel: "热量",
+        langBtn: "English"
+    }
+};
+
+let currentLang = 'en';
+
+const searchMapping = {
+    "鸡肉": "chicken",
+    "牛肉": "beef",
+    "猪肉": "pork",
+    "鱼肉": "fish",
+    "三文鱼": "salmon",
+    "鸡蛋": "eggs",
+    "苹果": "apples",
+    "香蕉": "bananas",
+    "橘子": "mandarin",
+    "米饭": "rice",
+    "面包": "bread",
+    "牛奶": "milk",
+    "烤制的": "broilers",
+    "烤制的": "broiler",
+    "油": "oil",
+    "油": "oil",
+    "开心果": "pistachio nuts",
+    "腰果": "cashew nuts",
+    "杏仁": "almonds",
+    "夏威夷果": "macadamia nuts"
+};
+let debounceTimer; // Also add this for search speed
 
 let foodLog = [];
 let foodDB = [];          
@@ -7,7 +73,16 @@ let searchIndex = [];
 
 
 window.addEventListener("DOMContentLoaded", async () => {
+    // 1. Check for saved language preference
+    const savedLang = localStorage.getItem("preferredLang");
+    if (savedLang) currentLang = savedLang;
+
     await loadLocalDatabase();
+
+    setupSearch(); // <--- ADD THIS LINE
+    // 2. IMPORTANT: Apply the language labels to the UI on startup
+    applyLanguage();
+
     const saved = localStorage.getItem("foodLog");
     if (saved) {
         foodLog = JSON.parse(saved);
@@ -43,6 +118,7 @@ async function loadLocalDatabase() {
 const foodInput = document.getElementById("foodInput");
 const suggestionsBox = document.getElementById("suggestions");
 
+/*
 foodInput.addEventListener("input", (e) => {
     const query = e.target.value.trim().toLowerCase();
     if (query.length < 2) {
@@ -54,6 +130,38 @@ foodInput.addEventListener("input", (e) => {
         .slice(0, 10);
     showSuggestions(matches);
 });
+*/
+
+function setupSearch() {
+    const foodInput = document.getElementById("foodInput");
+    
+    foodInput.addEventListener("input", (e) => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+            let query = e.target.value.trim().toLowerCase();
+            
+            // Translate Chinese search terms to English before searching
+            if (currentLang === 'zh') {
+                for (const [zh, en] of Object.entries(searchMapping)) {
+                    if (query.includes(zh)) {
+                        query = query.replace(zh, en);
+                    }
+                }
+            }
+
+            if (query.length < 2) {
+                hideSuggestions();
+                return;
+            }
+
+            const matches = searchIndex
+                .filter(item => item.name.toLowerCase().includes(query))
+                .slice(0, 10);
+                
+            showSuggestions(matches);
+        }, 150); 
+    });
+}
 
 function showSuggestions(list) {
     suggestionsBox.innerHTML = "";
@@ -61,12 +169,34 @@ function showSuggestions(list) {
         hideSuggestions();
         return;
     }
+
+    const lang = i18n[currentLang];
+
     list.forEach(item => {
         const div = document.createElement("div");
         div.className = "suggestion-item";
-        div.textContent = item.name;
+
+        let originalName = item.name;
+        let translatedName = item.name;
+
+        // If Chinese mode is on, try to replace keywords
+        if (currentLang === 'zh') {
+            Object.entries(searchMapping).forEach(([zh, en]) => {
+                const regex = new RegExp(en, "gi");
+                translatedName = translatedName.replace(regex, zh);
+            });
+        }
+
+        // Display translated name, but keep original for selection logic
+        div.innerHTML = `
+            <div class="name-main">${translatedName}</div>
+            <div class="name-sub">${currentLang === 'zh' ? originalName : ''}</div>
+        `;
+
+        //div.textContent = item.name;
         div.onclick = () => {
-            foodInput.value = item.name;
+            foodInput.value = originalName; // Always keep original English for data lookup
+            //foodInput.value = item.name;
             foodInput.dataset.fdcId = item.fdcId;
             hideSuggestions();
         };
@@ -201,13 +331,21 @@ async function addFood() {
 function renderList() {
     const list = document.getElementById("foodList");
     list.innerHTML = "";
+
+    // ADD THIS LINE: Get current language terms
+    const lang = i18n[currentLang];
+
     foodLog.forEach((item, index) => {
         const li = document.createElement("li");
         li.className = "food-item";
+
+        // Fix: handle the dash for manual entries
+        const qtyDisplay = item.qty === "—" ? "" : `(${item.qty}g)`;
+
         li.innerHTML = `
             <div>
-                <strong>${item.name}</strong> (${item.qty}g)<br>
-                <small>${item.cal.toFixed(1)} kcal | Protein: ${item.protein.toFixed(1)}g | Carbs: ${item.carbs.toFixed(1)}g | Fat: ${item.fat.toFixed(1)}g</small>
+                <strong>${item.name}</strong> ${qtyDisplay}<br>
+                <small>${item.cal.toFixed(1)} kcal | ${lang.prot}: ${item.protein.toFixed(1)}g | ${lang.carb}: ${item.carbs.toFixed(1)}g | ${lang.fat}: ${item.fat.toFixed(1)}g</small>
             </div>
             <button onclick="deleteEntry(${index})" class="delete-btn">✕</button>
         `;
@@ -229,9 +367,12 @@ function updateTotals() {
         
     });
 
+    // ADD THIS LINE:
+    const lang = i18n[currentLang];
+
     document.getElementById("totals").innerHTML = `
-        <p style="font-size: 1.2em; color: #ff7a00;">Calories: <strong>${tCal.toFixed(1)} kcal</strong></p>
-        <p>Protein: <strong>${tProt.toFixed(1)}g</strong> | Carbs: <strong>${tCarb.toFixed(1)}g</strong> | Fat: <strong>${tFat.toFixed(1)}g</strong></strong></p>
+        <p style="font-size: 1.2em; color: #ff7a00;">${lang.caloriesLabel}: <strong>${tCal.toFixed(1)} kcal</strong></p>
+        <p>${lang.prot}: <strong>${tProt.toFixed(1)}g</strong> | ${lang.carb}: <strong>${tCarb.toFixed(1)}g</strong> | ${lang.fat}: <strong>${tFat.toFixed(1)}g</strong></p>
     `;
 }
 
@@ -292,7 +433,16 @@ function addManualFood() {
 
 function toggleLanguage() {
     currentLang = currentLang === 'en' ? 'zh' : 'en';
+    // Save preference so it stays after refresh
+    localStorage.setItem("preferredLang", currentLang); 
+    applyLanguage();
+}
+
+function applyLanguage() {
     const lang = i18n[currentLang];
+
+    // Add this specific line:
+    document.getElementById("autoSearchTitle").textContent = lang.autoSearch;
 
     // Update Headers and Buttons
     document.querySelector("h1").textContent = lang.title;
@@ -300,7 +450,7 @@ function toggleLanguage() {
     document.getElementById("qtyInput").placeholder = lang.weightPlaceholder;
     document.getElementById("addButton").textContent = lang.addBtn;
     
-    // Update Manual Section
+    // Update Manual Section - Note: use IDs to be safe
     document.querySelector(".manual-card h3").textContent = lang.manualTitle;
     document.getElementById("manualName").placeholder = lang.manualName;
     document.getElementById("manualCal").placeholder = lang.manualCal;
@@ -309,15 +459,14 @@ function toggleLanguage() {
     document.getElementById("manualFat").placeholder = lang.fat;
     document.querySelector(".manual-add-btn").textContent = lang.manualAddBtn;
 
-    // Update List and Totals sections
-    document.querySelector(".card:nth-of-type(3) h3").textContent = lang.todayTitle;
-    document.querySelector(".clear-btn").textContent = lang.clearBtn;
-    document.querySelector(".card:nth-of-type(4) h3").textContent = lang.totalsTitle;
+    // Update List and Totals labels (using nth-of-type based on your HTML structure)
+    const cards = document.querySelectorAll(".card h3");
+    if(cards[1]) cards[1].textContent = lang.todayTitle; 
+    if(cards[2]) cards[2].textContent = lang.totalsTitle;
     
-    // Update Switch Button Text
+    document.querySelector(".clear-btn").textContent = lang.clearBtn;
     document.getElementById("langSwitch").textContent = lang.langBtn;
 
-    // Refresh UI components to show new labels
     renderList();
     updateTotals();
 }
