@@ -78,7 +78,7 @@ document.addEventListener("click", (e) => {
     }
 });
 
-// Nutrient extraction logic
+// Nutrient extraction logic corrected for your JSON version
 function getNutrientsFromLocalDB(fdcId) {
     const food = foodDB.find(f => f.fdcId == fdcId);
     if (!food) return null;
@@ -86,21 +86,20 @@ function getNutrientsFromLocalDB(fdcId) {
     let cal = 0, protein = 0, carbs = 0, fat = 0;
 
     food.foodNutrients.forEach(nut => {
-        // Updated to match Foundation_Foods structure
         const id = nut.nutrient.id; 
         const amount = nut.amount ?? 0;
 
         switch (id) {
             case 1008: // Energy (kcal)
-            cal = amount;
-            break;
-            case 1003: // Protein (Matches your file)
+                cal = amount;
+                break;
+            case 1003: // Protein
                 protein = amount;
                 break;
-            case 1005: // Carbohydrate (Matches your file)
+            case 1005: // Carbohydrate
                 carbs = amount;
                 break;
-            case 1004: // Total lipid (fat) (Matches your file)
+            case 1004: // Total Fat
                 fat = amount;
                 break;
         }
@@ -117,7 +116,8 @@ function getNutrientsFromLocalDB(fdcId) {
 
 async function addFood() {
     const name = foodInput.value.trim();
-    const qty = parseFloat(document.getElementById("qtyInput").value);
+    const qtyInput = document.getElementById("qtyInput");
+    const qty = parseFloat(qtyInput.value);
     const fdcId = foodInput.dataset.fdcId;
 
     if (!name || isNaN(qty) || qty <= 0 || !fdcId) {
@@ -148,7 +148,7 @@ async function addFood() {
         
         foodInput.value = "";
         foodInput.dataset.fdcId = "";
-        document.getElementById("qtyInput").value = "";
+        qtyInput.value = "";
     }
 }
 
