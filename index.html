@@ -1,68 +1,37 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Food Tracker</title>
-
-    <style>
-        /* Autocomplete dropdown */
-        #suggestions {
-            position: absolute;
-            background: white;
-            border: 1px solid #ccc;
-            width: 250px;
-            max-height: 200px;
-            overflow-y: auto;
-            display: none;
-            z-index: 10;
-        }
-
-        .suggestion-item {
-            padding: 8px;
-            cursor: pointer;
-        }
-
-        .suggestion-item:hover {
-            background: #f0f0f0;
-        }
-
-        /* Food list styling */
-        #foodList li {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 10px;
-            padding: 8px;
-            background: #fafafa;
-            border-radius: 6px;
-        }
-
-        .entry-actions button {
-            margin-left: 5px;
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-    <h2>Food Tracker</h2>
+    <header>
+        <h1>Food Tracker</h1>
+    </header>
 
-    <!-- Food input -->
-    <div style="position: relative;">
-        <input id="foodInput" type="text" placeholder="Food name" autocomplete="off">
-        <div id="suggestions"></div>
+    <div class="card input-card">
+        <div class="search-container">
+            <input id="foodInput" type="text" placeholder="Search food (e.g. Chicken)" autocomplete="off">
+            <div id="suggestions"></div>
+        </div>
+
+        <input id="qtyInput" type="number" placeholder="Weight in grams (e.g. 100)">
+
+        <button id="addButton" class="add-btn" onclick="addFood()">Add to Log</button>
     </div>
 
-    <!-- Quantity -->
-    <input id="qtyInput" type="number" placeholder="Grams (100g = default)">
+    <div class="card">
+        <h3>Today's Foods</h3>
+        <ul id="foodList" style="list-style: none; padding: 0;"></ul>
+    </div>
 
-    <!-- Add button -->
-    <button id="addButton" onclick="addFood()">Add Food</button>
-
-    <h3>Today's Foods</h3>
-    <ul id="foodList"></ul>
-
-    <h3>Totals</h3>
-    <div id="totals"></div>
+    <div class="card">
+        <h3>Daily Totals</h3>
+        <div id="totals"></div>
+    </div>
 
     <script src="script.js"></script>
 </body>

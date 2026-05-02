@@ -1,72 +1,49 @@
-// ===============================
-// Local USDA Food Tracker - script.js
-// Uses local Foundation_Foods.json
-// ===============================
-
 // -------- Global state --------
 let foodLog = [];
-let foodDB = [];          // full USDA database
-let searchIndex = [];     // for autocomplete
+let foodDB = [];          
+let searchIndex = [];     
 
-// Restore saved log + load DB
 window.addEventListener("DOMContentLoaded", async () => {
     await loadLocalDatabase();
-
     const saved = localStorage.getItem("foodLog");
     if (saved) {
         foodLog = JSON.parse(saved);
+        renderList();
+        updateTotals();
     }
-
-    renderList();
-    updateTotals();
 });
-
-// ===============================
-// Load local USDA Foundation Foods
-// ===============================
 
 async function loadLocalDatabase() {
     try {
         const response = await fetch("Foundation_Foods.json");
         const data = await response.json();
-
-        // Your file structure:
-        // { "FoundationFoods": [ ... ] }
+        
+        // Match the "FoundationFoods" key in your JSON
         foodDB = data.FoundationFoods;
 
-        // Build autocomplete index
         searchIndex = foodDB.map(food => ({
             name: food.description,
             fdcId: food.fdcId
         }));
-
-        console.log("Loaded local USDA DB:", foodDB.length, "foods");
-
+        console.log("Database Loaded:", foodDB.length, "items");
     } catch (err) {
-        console.error("Failed to load Foundation_Foods.json:", err);
-        alert("Error loading Foundation_Foods.json. Make sure it is in the same folder as index.html");
+        console.error("Failed to load JSON. Ensure you are using a local server:", err);
     }
 }
 
-// ===============================
-// Autocomplete search (local)
-// ===============================
-
+// Autocomplete Logic
 const foodInput = document.getElementById("foodInput");
 const suggestionsBox = document.getElementById("suggestions");
 
 foodInput.addEventListener("input", (e) => {
     const query = e.target.value.trim().toLowerCase();
-
     if (query.length < 2) {
         hideSuggestions();
         return;
     }
-
     const matches = searchIndex
         .filter(item => item.name.toLowerCase().includes(query))
-        .slice(0, 12);
-
+        .slice(0, 10);
     showSuggestions(matches);
 });
 
@@ -76,7 +53,6 @@ function showSuggestions(list) {
         hideSuggestions();
         return;
     }
-
     list.forEach(item => {
         const div = document.createElement("div");
         div.className = "suggestion-item";
@@ -88,50 +64,47 @@ function showSuggestions(list) {
         };
         suggestionsBox.appendChild(div);
     });
-
     suggestionsBox.style.display = "block";
 }
 
 function hideSuggestions() {
     suggestionsBox.style.display = "none";
-    suggestionsBox.innerHTML = "";
 }
 
+// Hide dropdown if clicking outside
 document.addEventListener("click", (e) => {
     if (!suggestionsBox.contains(e.target) && e.target !== foodInput) {
         hideSuggestions();
     }
 });
 
-// ===============================
-// Extract nutrients from local DB
-// ===============================
-
+// Nutrient extraction logic
 function getNutrientsFromLocalDB(fdcId) {
     const food = foodDB.find(f => f.fdcId == fdcId);
     if (!food) return null;
 
     let cal = 0, protein = 0, carbs = 0, fat = 0;
 
-    for (const nutrient of food.foodNutrients) {
-        const id = nutrient.nutrient.id;
-        const amount = nutrient.amount ?? 0;
+    food.foodNutrients.forEach(nut => {
+        // Updated to match Foundation_Foods structure
+        const id = nut.nutrient.id; 
+        const amount = nut.amount ?? 0;
 
         switch (id) {
             case 1008: // Energy (kcal)
-                cal = amount;
-                break;
-            case 1003: // Protein
+            cal = amount;
+            break;
+            case 1003: // Protein (Matches your file)
                 protein = amount;
                 break;
-            case 1005: // Carbs
+            case 1005: // Carbohydrate (Matches your file)
                 carbs = amount;
                 break;
-            case 1004: // Fat
+            case 1004: // Total lipid (fat) (Matches your file)
                 fat = amount;
                 break;
         }
-    }
+    });
 
     return {
         name: food.description,
@@ -142,82 +115,56 @@ function getNutrientsFromLocalDB(fdcId) {
     };
 }
 
-// ===============================
-// Add food
-// ===============================
-
 async function addFood() {
     const name = foodInput.value.trim();
     const qty = parseFloat(document.getElementById("qtyInput").value);
     const fdcId = foodInput.dataset.fdcId;
 
-    if (!name || !qty || qty <= 0) {
-        alert("Please enter a valid food name and quantity.");
-        return;
-    }
-
-    if (!fdcId) {
-        alert("Please select a food from the dropdown.");
+    if (!name || isNaN(qty) || qty <= 0 || !fdcId) {
+        alert("Please select a food from the list and enter a valid quantity.");
         return;
     }
 
     const nutrition = getNutrientsFromLocalDB(fdcId);
-    if (!nutrition) {
-        alert("Food not found in local database.");
-        return;
+    if (nutrition) {
+        const factor = qty / 100;
+        const entry = {
+            name: nutrition.name,
+            qty,
+            calPer100: nutrition.calPer100,
+            proteinPer100: nutrition.proteinPer100,
+            carbsPer100: nutrition.carbsPer100,
+            fatPer100: nutrition.fatPer100,
+            cal: nutrition.calPer100 * factor,
+            protein: nutrition.proteinPer100 * factor,
+            carbs: nutrition.carbsPer100 * factor,
+            fat: nutrition.fatPer100 * factor
+        };
+
+        foodLog.push(entry);
+        localStorage.setItem("foodLog", JSON.stringify(foodLog));
+        renderList();
+        updateTotals();
+        
+        foodInput.value = "";
+        foodInput.dataset.fdcId = "";
+        document.getElementById("qtyInput").value = "";
     }
-
-    const factor = qty / 100;
-
-    const entry = {
-        name: nutrition.name,
-        qty,
-        calPer100: nutrition.calPer100,
-        proteinPer100: nutrition.proteinPer100,
-        carbsPer100: nutrition.carbsPer100,
-        fatPer100: nutrition.fatPer100,
-        cal: nutrition.calPer100 * factor,
-        protein: nutrition.proteinPer100 * factor,
-        carbs: nutrition.carbsPer100 * factor,
-        fat: nutrition.fatPer100 * factor
-    };
-
-    foodLog.push(entry);
-    localStorage.setItem("foodLog", JSON.stringify(foodLog));
-
-    renderList();
-    updateTotals();
-
-    foodInput.value = "";
-    foodInput.dataset.fdcId = "";
-    document.getElementById("qtyInput").value = "";
 }
-
-// ===============================
-// Render list + edit/delete
-// ===============================
 
 function renderList() {
     const list = document.getElementById("foodList");
     list.innerHTML = "";
-
     foodLog.forEach((item, index) => {
         const li = document.createElement("li");
-
+        li.className = "food-item";
         li.innerHTML = `
             <div>
-                <strong>${item.name}</strong> (${item.qty} g)<br>
-                ${item.cal.toFixed(1)} kcal — 
-                P: ${item.protein.toFixed(1)} g, 
-                C: ${item.carbs.toFixed(1)} g, 
-                F: ${item.fat.toFixed(1)} g
+                <strong>${item.name}</strong> (${item.qty}g)<br>
+                <small>${item.cal.toFixed(1)} kcal | P: ${item.protein.toFixed(1)}g | C: ${item.carbs.toFixed(1)}g | F: ${item.fat.toFixed(1)}g</small>
             </div>
-            <div class="entry-actions">
-                <button onclick="editEntry(${index})">Edit</button>
-                <button onclick="deleteEntry(${index})">Delete</button>
-            </div>
+            <button onclick="deleteEntry(${index})" class="delete-btn">✕</button>
         `;
-
         list.appendChild(li);
     });
 }
@@ -229,51 +176,14 @@ function deleteEntry(index) {
     updateTotals();
 }
 
-function editEntry(index) {
-    const current = foodLog[index];
-    const newQtyStr = prompt("Enter new quantity in grams:", current.qty);
-    if (!newQtyStr) return;
-
-    const newQty = parseFloat(newQtyStr);
-    if (!newQty || newQty <= 0) {
-        alert("Invalid quantity.");
-        return;
-    }
-
-    const factor = newQty / 100;
-
-    current.qty = newQty;
-    current.cal = current.calPer100 * factor;
-    current.protein = current.proteinPer100 * factor;
-    current.carbs = current.carbsPer100 * factor;
-    current.fat = current.fatPer100 * factor;
-
-    localStorage.setItem("foodLog", JSON.stringify(foodLog));
-    renderList();
-    updateTotals();
-}
-
-// ===============================
-// Totals
-// ===============================
-
 function updateTotals() {
-    let totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
+    let tCal = 0, tProt = 0, tCarb = 0, tFat = 0;
+    foodLog.forEach(i => {
+        tCal += i.cal; tProt += i.protein; tCarb += i.carbs; tFat += i.fat;
+    });
 
-    for (const item of foodLog) {
-        totalCal += item.cal;
-        totalProtein += item.protein;
-        totalCarbs += item.carbs;
-        totalFat += item.fat;
-    }
-
-    const totalsEl = document.getElementById("totals");
-
-    totalsEl.innerHTML = `
-        <strong>Daily Total:</strong><br>
-        ${totalCal.toFixed(1)} kcal<br>
-        Protein: ${totalProtein.toFixed(1)} g<br>
-        Carbs: ${totalCarbs.toFixed(1)} g<br>
-        Fat: ${totalFat.toFixed(1)} g
+    document.getElementById("totals").innerHTML = `
+        <p style="font-size: 1.2em; color: #ff7a00;"><strong>${tCal.toFixed(1)} kcal</strong></p>
+        <p>P: <strong>${tProt.toFixed(1)}g</strong> | C: <strong>${tCarb.toFixed(1)}g</strong> | F: <strong>${tFat.toFixed(1)}g</strong></p>
     `;
 }
