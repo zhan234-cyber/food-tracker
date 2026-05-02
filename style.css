@@ -41,16 +41,18 @@ input {
 
 #suggestions {
     position: absolute;
-    top: 48px; /* sits right below the input */
+    /*top: 48px; /* sits right below the input */
+    top: calc(100% + 5px);
     left: 0;
     width: 100%;
     background: white;
     border: 1px solid #ddd;
-    border-radius: 0 0 10px 10px;
-    max-height: 200px;
+    /*border-radius: 0 0 10px 10px;*/
+    border-radius: 12px;
+    max-height: 300px;
     overflow-y: auto;
     z-index: 1000;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
     display: none;
 }
 
@@ -101,4 +103,64 @@ input {
 
 #totals p {
     margin: 8px 0;
+}
+
+.clear-btn {
+    width: 100%;
+    padding: 10px;
+    background-color: transparent;
+    color: #888;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-bottom: 20px;
+}
+
+.clear-btn:hover {
+    background-color: #fff1f1; /* Light red tint */
+    color: #ff4d4d;           /* Stronger red text */
+    border-color: #ff4d4d;
+}
+
+.clear-btn:active {
+    transform: scale(0.98);    /* Slight click shrink effect */
+}
+
+
+
+/* Container for Prot, Carb, Fat */
+.macro-row {
+    display: flex;
+    gap: 10px; /* Space between the three inputs */
+    margin: 15px 0;
+}
+
+/* Ensure the three small inputs share the width equally */
+.macro-input {
+    flex: 1; 
+    min-width: 0; /* Prevents overflow on very small screens */
+    padding: 12px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+}
+
+/* The Green Button Style */
+.manual-add-btn {
+    width: 100%;
+    padding: 14px;
+    background-color: #4CAF50; /* Match the green in your screenshot */
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.manual-add-btn:hover {
+    opacity: 0.9;
 }

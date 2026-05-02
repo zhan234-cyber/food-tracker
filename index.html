@@ -14,6 +14,7 @@
 
     <div class="card input-card">
         <div class="search-container">
+            <h3>Auto Search</h3>
             <input id="foodInput" type="text" placeholder="Search food (e.g. Chicken)" autocomplete="off">
             <div id="suggestions"></div>
         </div>
@@ -23,12 +24,29 @@
         <button id="addButton" class="add-btn" onclick="addFood()">Add to Log</button>
     </div>
 
+    <div class="card manual-card">
+        <h3>Manual Entry</h3>
+        
+        <input type="text" id="manualName" class="input-field" placeholder="Food Name (e.g. Homemade Pizza)">
+        
+        <input type="number" id="manualCal" class="input-field" placeholder="Total Calories (kcal)" style="margin-bottom: 10px;">
+
+        <div class="macro-row">
+            <input type="number" id="manualProtein" class="macro-input" placeholder="Protein (g)">
+            <input type="number" id="manualCarbs" class="macro-input" placeholder="Carbs (g)">
+            <input type="number" id="manualFat" class="macro-input" placeholder="Fat (g)">
+        </div>
+        
+        <button onclick="addManualFood()" class="manual-add-btn">Add Manual Entry</button>
+    </div>
+
     <div class="card">
         <h3>Today's Foods</h3>
         <ul id="foodList" style="list-style: none; padding: 0;"></ul>
     </div>
 
     <div class="card">
+        <button class="clear-btn" onclick="clearLog()" style="background: #ccc; margin-bottom: 10px;">Clear Daily Log</button>
         <h3>Daily Totals</h3>
         <div id="totals"></div>
     </div>
