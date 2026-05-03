@@ -195,9 +195,12 @@ function showSuggestions(list) {
 
         //div.textContent = item.name;
         div.onclick = () => {
-            foodInput.value = originalName; // Always keep original English for data lookup
+            //foodInput.value = originalName; // Always keep original English for data lookup
+            foodInput.value = (currentLang === 'zh') ? translatedName : originalName;
             //foodInput.value = item.name;
             foodInput.dataset.fdcId = item.fdcId;
+            // NEW: Store the translated name so addFood can use it
+            foodInput.dataset.translatedName = translatedName;
             hideSuggestions();
         };
         suggestionsBox.appendChild(div);
@@ -302,8 +305,15 @@ async function addFood() {
     const nutrition = getNutrientsFromLocalDB(fdcId);
     if (nutrition) {
         const factor = qty / 100;
+
+        // NEW: Get the translated name we stored during the click
+        const savedTranslation = foodInput.dataset.translatedName;
+
         const entry = {
-            name: nutrition.name,
+            // ALWAYS store the original English name for reference
+            enName: nutrition.name,
+            // FIX: Use the translation if we are in Chinese mode
+            name: (currentLang === 'zh' && savedTranslation) ? savedTranslation : nutrition.name,
             qty,
             calPer100: nutrition.calPer100,
             proteinPer100: nutrition.proteinPer100,
@@ -319,12 +329,20 @@ async function addFood() {
 
         foodLog.push(entry);
         localStorage.setItem("foodLog", JSON.stringify(foodLog));
+
+        // NEW: Clear the translation data along with other fields
+        foodInput.value = "";
+        foodInput.dataset.fdcId = "";
+        foodInput.dataset.translatedName = ""; 
+        qtyInput.value = "";
+
         renderList();
         updateTotals();
-        
+        /*
         foodInput.value = "";
         foodInput.dataset.fdcId = "";
         qtyInput.value = "";
+        */
     }
 }
 
@@ -339,12 +357,30 @@ function renderList() {
         const li = document.createElement("li");
         li.className = "food-item";
 
+
+        // --- DYNAMIC TRANSLATION LOGIC ---
+        // Default to the stored name (good for manual entries)
+        let displayName = item.name;
+
+        // If it's an auto-searched item (has enName), translate it on the fly
+        if (item.enName) {
+            displayName = item.enName;
+            if (currentLang === 'zh') {
+                Object.entries(searchMapping).forEach(([zh, en]) => {
+                    const regex = new RegExp(en, "gi");
+                    displayName = displayName.replace(regex, zh);
+                });
+            }
+        }
+        // ---------------------------------
+
+
         // Fix: handle the dash for manual entries
         const qtyDisplay = item.qty === "—" ? "" : `(${item.qty}g)`;
 
         li.innerHTML = `
             <div>
-                <strong>${item.name}</strong> ${qtyDisplay}<br>
+                <strong>${displayName}</strong> ${qtyDisplay}<br>
                 <small>${item.cal.toFixed(1)} kcal | ${lang.prot}: ${item.protein.toFixed(1)}g | ${lang.carb}: ${item.carbs.toFixed(1)}g | ${lang.fat}: ${item.fat.toFixed(1)}g</small>
             </div>
             <button onclick="deleteEntry(${index})" class="delete-btn">✕</button>
@@ -412,7 +448,9 @@ function addManualFood() {
     }
 
     const entry = {
-        name: name + " (Manual)",
+        //name: name + " (Manual)",
+        name: name + (currentLang === 'zh' ? " (手动)" : " (Manual)"),
+        enName: null, // Manual entries don't re-translate automatically
         qty: "—", 
         protein: p,
         carbs: c,
@@ -441,11 +479,33 @@ function toggleLanguage() {
 function applyLanguage() {
     const lang = i18n[currentLang];
 
+    // --- NEW TOGGLE ANIMATION LOGIC ---
+    const handle = document.getElementById("switchHandle");
+    const labels = document.querySelectorAll(".lang-label");
+
+    if (handle && labels.length >= 2) {
+        if (currentLang === 'zh') {
+            handle.classList.add("translate-zh");
+            labels[1].classList.add("active-lang"); // ZH turns orange
+            labels[0].classList.remove("active-lang");
+        } else {
+            handle.classList.remove("translate-zh");
+            labels[0].classList.add("active-lang"); // EN turns orange
+            labels[1].classList.remove("active-lang");
+        }
+    }
+    // ----------------------------------
+
     // Add this specific line:
     document.getElementById("autoSearchTitle").textContent = lang.autoSearch;
 
     // Update Headers and Buttons
-    document.querySelector("h1").textContent = lang.title;
+    //document.querySelector("h1").textContent = lang.title;
+
+    // Update Headers and Buttons
+    document.getElementById("mainTitle").textContent = lang.title;
+    document.getElementById("autoSearchTitle").textContent = lang.autoSearch;
+
     document.getElementById("foodInput").placeholder = lang.searchPlaceholder;
     document.getElementById("qtyInput").placeholder = lang.weightPlaceholder;
     document.getElementById("addButton").textContent = lang.addBtn;

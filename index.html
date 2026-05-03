@@ -8,10 +8,19 @@
 </head>
 <body>
 
-    <div class="container"> <div class="header-row">
+
+    <div class="header-row">
         <h1 id="mainTitle">Food Tracker</h1>
-        <button id="langSwitch" onclick="toggleLanguage()" class="lang-btn">中文</button>
+        <div class="lang-switch-container" onclick="toggleLanguage()">
+            <div id="switchRef" class="switch-bg">
+                <span class="lang-label">EN</span>
+                <span class="lang-label">中文</span>
+                <div id="switchHandle" class="switch-handle"></div>
+            </div>
+        </div>
     </div>
+
+
 
     <div class="card input-card">
         <div class="search-container">
