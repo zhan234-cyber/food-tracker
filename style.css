@@ -197,12 +197,19 @@ input {
 .lang-switch-container {
     cursor: pointer;
     user-select: none;
+
+    /* This removes the mobile click shading */
+    -webkit-tap-highlight-color: transparent;
+    
+    /* Optional: Removes the focus outline on some browsers */
+    outline: none;
+    touch-action: manipulation; /* Makes the click feel instant on mobile */
 }
 
 .switch-bg {
     position: relative;
-    width: 76px;
-    height: 31.3px;
+    width: 79px;
+    height: 35px;
     /* Transparent white background */
     background: rgba(255, 255, 255, 0.4);
     border-radius: 40px;
@@ -233,13 +240,13 @@ input {
 /* The sliding white pill */
 .switch-handle {
     position: absolute;
-    left: 4px;
+    left: 5.6px;
     width: 36px;
     height: 26px;
 
     /* Pure white with high opacity for contrast */
     background: rgba(255, 255, 255, 0.85);
-    border-radius: 25px;
+    border-radius: 40px;
     
     /* Reflective glass effect */
     border-top: 1px solid rgba(255, 255, 255, 0.8);
